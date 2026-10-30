@@ -14,7 +14,7 @@
 |---|---|---|
 | **Gillemosai_Cursor_base** | Dark · Light | Seta delta com contorno laranja |
 | **Gillemosai_Cursor_Pixel8** | White · Mint | Clima de plataforma retrô em 8 bits, com moeda girando no carregando |
-| **Gillemosai_Cursor_Galaxy** | Blue · Red | Neon de saga espacial, com naves originais orbitando no carregando e voando no progresso |
+| **Gillemosai_Cursor_Galaxy** | Blue · Red | Neon de saga espacial: ponteiro em forma de caça estelar, feixes de energia, robozinho e frota de naves originais orbitando no carregando |
 | **Gillemosai_Cursor_Hologram** | Cyan · Amber | Painel holográfico de exploração espacial, com radar no carregando |
 | **Gillemosai_Cursor_Ninja** | Orange · Blue | Kunai e shuriken em aço, com shuriken girando no carregando |
 

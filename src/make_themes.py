@@ -253,9 +253,59 @@ def arrow_base():
     return dict(prims=[("poly", [A, R] + bez(R, (30, 39.5), (19, 43.5), BL)[1:])], hot=A, details=[])
 
 
+# --- frota original do tema Galaxy (silhuetas minhas; nariz na origem, corpo para +y)
+SHIPS = {
+    "fighter": dict(L=36, cock=(0, 15), eng=[(-1.8, 37.2), (1.8, 37.2)],
+                    body=[(0, 0), (2.4, 7), (3.4, 15), (13, 27), (13.5, 31), (5, 28), (3, 36), (-3, 36), (-5, 28),
+                          (-13.5, 31), (-13, 27), (-3.4, 15), (-2.4, 7)]),
+    "hauler": dict(L=30, cock=(0, 7), eng=[(-3, 29.8), (0, 29.8), (3, 29.8)],
+                   body=[(-4, 0), (4, 0), (6.5, 6), (7, 22), (5, 28), (-5, 28), (-7, 22), (-6.5, 6)]),
+    "scout": dict(L=34, cock=(0, 13), eng=[(-1.2, 35), (1.2, 35)],
+                  body=[(0, 0), (3, 8), (3.4, 18), (9, 28), (9, 31), (2.6, 27), (2.2, 34), (-2.2, 34), (-2.6, 27),
+                        (-9, 31), (-9, 28), (-3.4, 18), (-3, 8)]),
+}
+
+
+def ship_prims(kind, origin, deg, k, centered):
+    s = SHIPS[kind]
+    sh = (0, s["L"] / 2) if centered else (0, 0)
+
+    def T(pts):
+        r = rot([((x - sh[0]) * k, (y - sh[1]) * k) for x, y in pts], deg, (0, 0))
+        return [(origin[0] + x, origin[1] + y) for x, y in r]
+
+    prims = [("poly", T(s["body"]))]
+    for e in s["eng"]:                           # chamas das turbinas
+        ex, ey = T([e])[0]
+        prims.append(("acircle", ex, ey, max(0.9, 1.5 * k)))
+    cx, cy = T([s["cock"]])[0]                   # cabine
+    prims.append(("acircle", cx, cy, max(0.9, 1.7 * k)))
+    return prims
+
+
+def robot_head(cx, cy, s):
+    """Robozinho original: cabeça arredondada, antena, olhos e boca."""
+    prims = [("line", [(cx, cy - 8.5 * s), (cx, cy - 12.5 * s)], 1.5 * s + 0.4),
+             ("acircle", cx, cy - 13.8 * s, 1.9 * s),
+             ("rrect", cx - 13.2 * s, cy - 3.2 * s, cx - 9 * s, cy + 3.2 * s, 1.4 * s),
+             ("rrect", cx + 9 * s, cy - 3.2 * s, cx + 13.2 * s, cy + 3.2 * s, 1.4 * s),
+             ("rrect", cx - 10.5 * s, cy - 8.5 * s, cx + 10.5 * s, cy + 8.5 * s, 4.2 * s),
+             ("acircle", cx - 4.3 * s, cy - 1.2 * s, 2.1 * s),
+             ("acircle", cx + 4.3 * s, cy - 1.2 * s, 2.1 * s)]
+    details = [([(cx - 4 * s, cy + 4.6 * s), (cx + 4 * s, cy + 4.6 * s)], max(1.1, 1.3 * s))]
+    return prims, details
+
+
 def arrow_galaxy():
-    A = (14, 5)
-    return dict(prims=[("poly", [A, (41, 41), (25, 37), (14, 53)])], hot=A, details=[])
+    """O ponteiro é um caça estelar original: o nariz é a ponta (hotspot)."""
+    tip, k, deg = (8, 6), 1.05, -45
+    prims = ship_prims("fighter", tip, deg, k, False)
+
+    def T(pts):
+        return [(tip[0] + x, tip[1] + y) for x, y in rot([(a * k, b * k) for a, b in pts], deg, (0, 0))]
+
+    flames = [(T([(ex, 38.4), (ex, 46)]), 1.3) for ex in (-1.8, 1.8)]
+    return dict(prims=prims, hot=tip, details=flames)
 
 
 def arrow_hologram():
@@ -318,25 +368,15 @@ def star(cx, cy, ro, ri, deg, n=4):
     return pts
 
 
-def ship(cx, cy, R, th, k):
-    """Caça estelar original (silhueta de dardo com asas recuadas) orbitando o ponto (cx,cy)."""
+def orbit_ship(kind, cx, cy, R, th, k):
+    """Nave da frota orbitando (cx,cy), com o nariz apontado no sentido do movimento."""
     px, py = cx + R * math.cos(math.radians(th)), cy + R * math.sin(math.radians(th))
-
-    def T(pts):
-        return [(px + x, py + y) for x, y in rot([(a * k, b * k) for a, b in pts], th + 180, (0, 0))]
-
-    body = [(0, -11), (2.6, -3), (10.5, 6), (10.5, 9), (4.2, 6.5), (2.4, 10),
-            (-2.4, 10), (-4.2, 6.5), (-10.5, 9), (-10.5, 6), (-2.6, -3)]
-    prims = [("poly", T(body))]
-    for ex in (-1.6, 1.6):                       # chamas das duas turbinas
-        ex_, ey_ = T([(ex, 10.8)])[0]
-        prims.append(("acircle", ex_, ey_, 1.5 * k))
-    return prims
+    return ship_prims(kind, (px, py), th + 180, k, True)
 
 
-def trail(cx, cy, R, th, k, w=2.2):
+def trail(cx, cy, R, th, half, w=2.2):
     """Rastro de propulsão que some atrás da nave (começa depois da cauda dela)."""
-    gap = (11.5 * k + 1.0) / R * 57.3
+    gap = (half + 1.0) / R * 57.3
     step = 12 * 19.5 / R
     arcs = []
     for j in range(6):
@@ -359,11 +399,18 @@ def loader_frames(theme, st, arrow, nf):
                                arcs=[(49, 49, 11.5, 6, a0, a0 + 110)]))
         elif theme == "galaxy":
             a0 = t * 360
-            # planeta no centro e uma nave original orbitando, deixando rastro de propulsão
-            wait.append(render([("circle", 32, 32, 7)] + ship(32, 32, 19.5, a0, 0.8), st,
-                               arcs=trail(32, 32, 19.5, a0, 0.8, 2.2)))
-            prog.append(render(A["prims"] + [("circle", 49.5, 49.5, 2.8)] + ship(49.5, 49.5, 8, a0, 0.38), st,
-                               A["details"], arcs=trail(49.5, 49.5, 8, a0, 0.38, 1.3)))
+            # robô no centro, frota de 3 naves originais em órbita (com rastro) e estrelas
+            rp, rd = robot_head(32, 34, 0.8)
+            prims = list(rp) + [("acircle", x, y, r) for x, y, r in
+                                [(6.5, 7, 1.2), (57.5, 8, 1.0), (7, 57, 1.0), (57, 57.5, 1.3)]]
+            arcs = []
+            for j, (kind, k) in enumerate([("fighter", 0.6), ("hauler", 0.66), ("scout", 0.62)]):
+                th = a0 + 120 * j
+                prims += orbit_ship(kind, 32, 32, 22, th, k)
+                arcs += trail(32, 32, 22, th, SHIPS[kind]["L"] / 2 * k, 1.7)
+            wait.append(render(prims, st, rd, arcs=arcs))
+            prog.append(render(A["prims"] + [("circle", 49.5, 49.5, 2.8)] + orbit_ship("scout", 49.5, 49.5, 8, a0, 0.36),
+                               st, A["details"], arcs=trail(49.5, 49.5, 8, a0, 17 * 0.36, 1.3)))
         elif theme == "hologram":
             a0 = t * 360
             sweep = [(32, 32, 23, 3, a0 - 18 * (j + 1), a0 - 18 * j, int(255 * (0.85 ** j) * (1 - j * 0.16)))
@@ -406,6 +453,11 @@ def build(theme, cfg, st):
     c["vertical-text"] = ([R([("line", rot([(32, 10), (32, 54)], 90), 3.0),
                               ("line", rot([(25, 10), (39, 10)], 90), 3.0),
                               ("line", rot([(25, 54), (39, 54)], 90), 3.0)])], (32, 32))
+    if cfg.get("beams"):          # feixes de energia com pontas arredondadas
+        c["text"] = ([R([("line", [(32, 9), (32, 55)], 3.4), ("circle", 32, 9, 3.8), ("circle", 32, 55, 3.8)])],
+                     (32, 32))
+        c["vertical-text"] = ([R([("line", [(9, 32), (55, 32)], 3.4), ("circle", 9, 32, 3.8),
+                                  ("circle", 55, 32, 3.8)])], (32, 32))
     pr, det = hand_point()
     c["pointer"] = ([R(pr, det)], (28.5, 5))
     pr, det = hand_open()
@@ -423,7 +475,11 @@ def build(theme, cfg, st):
     c["nesw-resize"] = ([R(double_arrow(45))], (32, 32))
     c["nwse-resize"] = ([R(double_arrow(-45))], (32, 32))
     c["not-allowed"] = ([R([("ring", 32, 32, 23, 16), ("line", [(19, 45), (45, 19)], 5.0)])], (32, 32))
-    c["help"] = ([RA(glyph=("?", 52, 51, 24))], hot)
+    if cfg.get("robot_help"):
+        rb, rdt = robot_head(51.5, 52, 0.78)
+        c["help"] = ([RA(rb, rdt)], hot)
+    else:
+        c["help"] = ([RA(glyph=("?", 52, 51, 24))], hot)
     c["copy"] = ([RA([("line", [(51, 44), (51, 58)], 4.4), ("line", [(44, 51), (58, 51)], 4.4)])], hot)
     c["alias"] = ([RA([("line", [(43, 58), (43, 50), (50, 50)], 3.4), ("poly", [(58, 50), (50, 43), (50, 57)])])], hot)
     c["context-menu"] = ([RA([("rrect", 43, 43, 61, 61, 3.5)],
@@ -542,8 +598,8 @@ THEMES = {
         }),
     "Galaxy": dict(
         full="Gillemosai_Cursor_Galaxy",
-        title="Galaxy", tagline="Neon de saga espacial, com naves originais orbitando no carregando",
-        arrow=arrow_galaxy, sizes=SIZES_STD, frames=24, delay=40, pixel=False,
+        title="Galaxy", tagline="Caça estelar de ponteiro, robô e frota original",
+        arrow=arrow_galaxy, sizes=SIZES_STD, frames=24, delay=40, pixel=False, beams=True, robot_help=True,
         variants={
             "Blue": dict(style=st((236, 248, 255, 255), (70, 165, 255), (140, 210, 255), o=1.5,
                                   glow=((50, 140, 255), 2.4, 1.5), detail=(70, 165, 255)),
